@@ -8,7 +8,7 @@ loadModel= True
 tokenize = True
 trainerSetup = True
 train = True
-seeValidation = False
+seeValidation = True
 ###########################################
 
 ###########################################
@@ -167,28 +167,6 @@ if train:
 ###########################################
 
 if seeValidation:
-    trainer.evaluate()  # Evaluates eval loss (and metrics if provided)
-
-    # Generates predictions on validation set
-    predictions = trainer.predict(tokenized_eval)
-    print(predictions.predictions.shape)
-
-    decoded_preds = tokenizer.batch_decode(predictions.predictions, skip_special_tokens=True)
-
-    # Decode them into readable summaries
-    labels = predictions.label_ids
-    labels = [
-    [token if token != -100 else tokenizer.pad_token_id for token in label]
-        for label in labels
-    ]
-    decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
-
-    # Print first 5 predictions alongside ground truth
-    for idx in range(5):
-        print(f"Input: {eval_data[idx]['input_text']}")
-        print(f"Predicted summary: {decoded_preds[idx]}")
-        print(f"Reference summary: {eval_data[idx]['output_text']}\n")
-else:
     trainer.evaluate()  # Optional: eval loss
 
     # Collect validation inputs (adjust as needed)

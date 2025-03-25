@@ -1,0 +1,4 @@
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+pip install transformers datasets peft accelerate bitsandbytes
+
+change the file location of csv file in dataprep
