@@ -121,10 +121,10 @@ def run_model(training_args, LoRA_params, data_args):
         model_name = "google/flan-t5-base"
 
         # Loads the tokenizer for the speicifed model 
-        tokenizer = T5Tokenizer.from_pretrained(model_name)
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
 
         # Loads the pre-trained model
-        model = T5ForConditionalGeneration.from_pretrained(model_name)
+        model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
 
         ### Apply LoRA making training faster and lighter
         lora_config = LoraConfig(
@@ -226,7 +226,7 @@ def run_model(training_args, LoRA_params, data_args):
             logging_dir="./logs",                      # Logs for TensorBoard
             fp16=True,                                  # Use FP16 if GPU supports it (reduces memory)
             label_smoothing_factor=labels_smoothing,                # Regularization for better generalization
-            max_grad_norm=max_grad_norm                          # gradient clipping
+            max_grad_norm=max_grad_norm,                          # gradient clipping
             weight_decay=0.01,                          # Regularization for better generalization
         )
 
@@ -237,10 +237,9 @@ def run_model(training_args, LoRA_params, data_args):
             train_dataset=tokenized_train,            # Tokenized training data
             eval_dataset=tokenized_eval,              # Tokenized validation data
             tokenizer=tokenizer,                      # Tokenizer for the model
-            data_collator=data_collator               # Data collator for batching and padding  
-            compute_metrics=compute_metrics                      # Optional: metrics to evaluate model performance       
+            data_collator=data_collator,               # Data collator for batching and padding              
         )
-
+#  compute_metrics=compute_metrics                      # Optional: metrics to evaluate model performance
 
 
     ###########################################
@@ -375,15 +374,15 @@ instruction_list_2 = [
 
 
 LoRA_args = [8, 64, 0.1]  # r, alpha, dropout
-training_args = [1e-4, 5, 0.1, 0.5, 4, 4]  # learning rate, no. epochs, label smoothing, max grad norm, train batch size, eval batch size
+training_args = [1e-4, 1, 0.1, 0.5, 4, 4]  # learning rate, no. epochs, label smoothing, max grad norm, train batch size, eval batch size
 data_args = [None, True]  # instruction, tags
 ####  run_model(1e-4, None, 10, [32, 64, 0.0], True)    # default =  learning rate, instruction, no. epochs, LoRA parameters (r, alpha, dropout), tags
 
 #run_model(training_args, LoRA_args, [None, True])
-#run_model(training_args, LoRA_args, [None, False])
+run_model(training_args, LoRA_args, [None, False])
 
 accum1 = 1
-for test_item in instruction_list_25:
-    print(f"LLM Test {accum1}/{len(instruction_list_25)}")
-    accum1 += 1
-    run_model(training_args, LoRA_args, [test_item, True])
+#for test_item in instruction_list_25:
+ #   print(f"LLM Test {accum1}/{len(instruction_list_25)}")
+  #  accum1 += 1
+   # run_model(training_args, LoRA_args, [test_item, True])
