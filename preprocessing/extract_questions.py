@@ -14,7 +14,7 @@ def parse_transcript(transcript_text, threshold=80):
         "Are there times when the subject uses socially inappropriate questions or statements? For example, do they regularly ask personal questions or make personal comments at awkward times?",
         "Has the subject ever got their personal pronouns the wrong way round? For example, has the subject ever mixed up 'you' and 'I'?",
     ]
-        
+    
     lines = transcript_text.strip().splitlines()
     qa_pairs = {}
     current_question = None

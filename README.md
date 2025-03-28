@@ -13,3 +13,5 @@ Every time you want to work on this, make sure you activate the venv to maintain
 When commiting new code, please include a message describing what the changes included are using "git commit -m '{example message}'" otherwise commits become hard to follow.
 
 If you have any issues with git things just ask me. It's a bit unintuitive
+
+Example addition for pushing to the main repo
