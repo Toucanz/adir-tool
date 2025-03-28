@@ -39,7 +39,16 @@ new_inputs = [
     "Oh yes, she made eye contact all the time."
 ]
 
+def add_instructions(example):
+    instruction = "TASK: You are a clinial interviewer.  You just asked a parent to describe their child's eye contact behaviour.  Their response is below.  Write a objective summary of the child's eye contact behaviour."
+    response = f"PARENT RESPONSE: {example}"
+    full_input = f"{instruction}\n\n{response}"
+    example = full_input
+    return example
 
+prepared_inputs = list(map(add_instructions, new_inputs))
+
+print(prepared_inputs)
 
 ###########################################
 ############## Run Inference ##############
