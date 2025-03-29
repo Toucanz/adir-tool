@@ -13,8 +13,8 @@ whisper_model = whisper.load_model("medium")
 # Load SpeechBrain speaker recognition model
 spk_model = SpeakerRecognition.from_hparams(source="speechbrain/spkrec-ecapa-voxceleb", savedir="tmpdir")
 
-# Convert M4A to WAV if necessary
-AUDIO_FILE = "/home/nick_z/ADIRproject/adir-tool/.venv/transcriber/question50.m4a"  # Change to your M4A file
+
+AUDIO_FILE = "/home/nick_z/ADIRproject/adir-tool/.venv/transcriber/question50.m4a"
 
 audio, sr = librosa.load(AUDIO_FILE, sr=16000)
 
@@ -62,6 +62,15 @@ speaker_labels = identify_speakers(segments, audio)
 # Display final result
 for i, segment in enumerate(segments):
     print(f"{speaker_labels[i]}: {segment['text']}")
+
+#save in output file
+with open("transcript.txt", "w") as file:
+    for i, segment in enumerate(segments):
+        file.write(f"{speaker_labels[i]}: {segment['text']}\n")
+
+print("Diarized output saved to 'transcript.txt'.")
+
+
 
 # Cleanup temporary files
 os.remove("converted_audio.wav") if AUDIO_FILE == "converted_audio.wav" else None
