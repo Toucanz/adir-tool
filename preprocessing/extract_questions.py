@@ -14,7 +14,11 @@ def parse_transcript(transcript_text, threshold=80):
         "Are there times when the subject uses socially inappropriate questions or statements? For example, do they regularly ask personal questions or make personal comments at awkward times?",
         "Has the subject ever got their personal pronouns the wrong way round? For example, has the subject ever mixed up 'you' and 'I'?",
     ]
+<<<<<<< HEAD
         
+=======
+    
+>>>>>>> main
     lines = transcript_text.strip().splitlines()
     qa_pairs = {}
     current_question = None
@@ -52,7 +56,11 @@ def parse_transcript(transcript_text, threshold=80):
 
     return qa_pairs
 
+<<<<<<< HEAD
 with open("preprocessing/example_transcript.txt", "r", encoding="utf-8") as f:
+=======
+with open("preprocessing\example_transcript.txt", "r", encoding="utf-8") as f:
+>>>>>>> main
     text = f.read()
 
 result = parse_transcript(text)
