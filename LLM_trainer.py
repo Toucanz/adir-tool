@@ -292,7 +292,7 @@ def run_model(training_args, LoRA_params, data_args):
         # Generate predictions
         generated_tokens = model.generate(
             **inputs,
-            min_length=32,
+            min_length=24,
             max_length=256,
             num_beams=8,        # changes "beam search" process, which is a decoding strategy.  Higher values = better quality generation (4 is medium)
             early_stopping=True # optional: stops generation when EOS is reached
