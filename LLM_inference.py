@@ -67,7 +67,7 @@ def add_instructions(input_text):
 
 prepared_inputs = list(map(add_instructions, list(map(add_tags, new_inputs))))
 
-print(prepared_inputs)
+#print(prepared_inputs)
 
 ###########################################
 ############## Run Inference ##############
