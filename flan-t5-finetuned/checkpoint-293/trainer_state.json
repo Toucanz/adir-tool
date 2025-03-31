@@ -12,9 +12,9 @@
     {
       "epoch": 1.0,
       "eval_loss": NaN,
-      "eval_runtime": 1.7256,
-      "eval_samples_per_second": 17.386,
-      "eval_steps_per_second": 4.636,
+      "eval_runtime": 1.3151,
+      "eval_samples_per_second": 22.812,
+      "eval_steps_per_second": 6.083,
       "step": 293
     }
   ],

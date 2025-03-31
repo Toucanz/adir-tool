@@ -1,5 +1,5 @@
 from datasets import load_dataset, concatenate_datasets
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, Seq2SeqTrainer, Seq2SeqTrainingArguments, DataCollatorForSeq2Seq, T5Tokenizer, T5ForConditionalGeneration
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, Seq2SeqTrainer, Seq2SeqTrainingArguments, DataCollatorForSeq2Seq, get_scheduler
 from peft import LoraConfig, get_peft_model, TaskType
 import re
 import random
@@ -34,6 +34,8 @@ def run_model(training_args, LoRA_params, data_args):
     max_grad_norm = training_args[3]
     train_batch_size = training_args[4]
     eval_batch_size = training_args[5]
+    warmup_ratio = training_args[6]
+    decay_schedule = training_args[7]
 
     # LoRA_params =  r, alpha, dropout
     r = LoRA_params[0]
@@ -240,6 +242,8 @@ def run_model(training_args, LoRA_params, data_args):
             label_smoothing_factor=labels_smoothing,                # Regularization for better generalization
             max_grad_norm=max_grad_norm,                          # gradient clipping
             weight_decay=0.01,                          # Regularization for better generalization
+            warmup_ratio=warmup_ratio,
+            lr_scheduler_type=decay_schedule
         )
 
         ## Create Trainer, pass model, data, tokenizer
@@ -252,7 +256,6 @@ def run_model(training_args, LoRA_params, data_args):
             data_collator=data_collator,               # Data collator for batching and padding
             compute_metrics=compute_metrics                      # Optional: metrics to evaluate model performance              
         )
-
 
 
     ###########################################
@@ -313,12 +316,12 @@ def run_model(training_args, LoRA_params, data_args):
         prediction_str = ""
         if LLM_performance_headers:
             LLM_performance_headers = False
-            prediction_str = f"Model Name,eval_loss,ROUGE LSum,ROUGE (1 / 2 / L / Lsum),BERTscore precision,BERTScore Recall,BERTScore F1,tags,instruction,Learning Rate,No. Epochs,LoRA parameters (r/alpha/dropout),"
+            prediction_str = f"Model Name,eval_loss,ROUGE LSum,ROUGE (1 / 2 / L / Lsum),BERTscore precision,BERTScore Recall,BERTScore F1,tags,instruction,Learning Rate,Warmup Ratio,Decay Schedule,No. Epochs,LoRA parameters (r/alpha/dropout),"
             for idx in range(len(decoded_preds)):
                 prediction_str += f"Input {idx+1},Predicted Summary {idx+1},Reference Summary {idx+1},"
             prediction_str += "\n"
 
-        prediction_str += f'"{model_name}","{eval_results['eval_loss']}","{eval_results['eval_rougeLsum']}","{eval_results['eval_rouge1']} / {eval_results['eval_rouge2']} / {eval_results['eval_rougeL']} / {eval_results['eval_rougeLsum']}","{eval_results['eval_bertscore_precision']}","{eval_results['eval_bertscore_recall']}","{eval_results['eval_bertscore_f1']}","{tags}","{inst}","{lr}","{no_epochs}","{r}/{alpha}/{dropout}",'
+        prediction_str += f'"{model_name}","{eval_results['eval_loss']}","{eval_results['eval_rougeLsum']}","{eval_results['eval_rouge1']} / {eval_results['eval_rouge2']} / {eval_results['eval_rougeL']} / {eval_results['eval_rougeLsum']}","{eval_results['eval_bertscore_precision']}","{eval_results['eval_bertscore_recall']}","{eval_results['eval_bertscore_f1']}","{tags}","{inst}","{lr}","{warmup_ratio}","{decay_schedule}","{no_epochs}","{r}/{alpha}/{dropout}",'
         #print(f"Validation Loss: {eval_results}")
         for idx in range(len(decoded_preds)):
             
@@ -337,58 +340,40 @@ def run_model(training_args, LoRA_params, data_args):
 ################# Parameters ##############
 ###########################################    
 
-learning_rates_list =  [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1]
+learning_rates_list =  [1e-5, 1e-4, 1e-3, 5e-3, 1e-2, 1e-1, 1]
+epoch_no_list = [5, 8, 15, 20, 30]
+warmup_ratio_list = [0, 0.025, 0.05, 0.075, 0.1]
 instruction_list = [
-    "TASK: You are a clinical interviewer. Summarize the following text reporting the child's eye contact behaviour",
-    "TASK: You are a clinical interviewer. Summarize the following text",
-    "TASK: As a clinical interviewer, summarize the eye contact behaviour described below",
-    "TASK: Generate a clinician-style summary describing the child's eye contact behaviour",
+    "TASK: Based on the parent's statement, describe the child's eye contact patterns in a clinical tone",
+    "TASK: Describe the child's responsiveness to visual social cues based on the parent's report",
+    "TASK: Transform the parent's informal account into a clinical summary of gaze behaviour",
+]
+
+intruction_list2 = [
     "TASK: Write a clinician-style summary using the parent's description of the child's eye contact",
     "TASK: Recast this parent narrative into a clinician's objective report on eye contact",
     "TASK: Produce a diagnostic-style description of the child's eye contact based on the text",
-    "TASK: Summarize the following text reporting the child's eye contact behaviour",
-    "TASK: Summarize the child's social gaze behaviour as described by the parent",
-    "TASK: Summarize the child's social gaze based on the following parent comments",
     "TASK: Provide a formal summary of the child's behavior related to eye contact",
     "TASK: Based on the parent's account, summarize how the child used eye contact",
-    "TASK: Compose a professional summary of the child's visual attention during interactions",
-    "TASK: Describe the child's responsiveness to visual social cues based on the parent's report",
-    "TASK: Summarize how the child initiates and maintains eye contact in social situations",
-    "TASK: Write a clinical summary of the child's eye contact behaviour based on the following report",
-    "TASK: Based on the parent's statement, describe the child's eye contact patterns in a clinical tone",
-    "TASK: Given the following parent narrative, write a clinical summary of eye contact behaviour",
-    "TASK: Transform the parent's informal account into a clinical summary of gaze behaviour",
-    "TASK: Turn this informal parent description into a formal clinical observation of eye contact",
-    "TASK: Convert the following into a clinical observation of eye contact behaviour"
-]
-instruction_list_4 = [
-    "TASK: Write a professional behavioral summary describing eye contact between ages 4 and 5",
-    "TASK: Write a summary of how the child engages visually during social interaction",
-    "TASK: Summarize the parent’s observations of the child’s eye contact into a clinical report",
-    "TASK: Create a brief, objective summary of the child’s social gaze as reported by the parent",
-    "TASK: Write a structured clinical note on the child's eye contact between ages 4 and 5",
-    "TASK: Write a concise behavioral summary about the child's eye contact from ages 4 to 5",
-    "TASK: Provide a summary suitable for a psychological assessment report about eye contact",
-    "TASK: Create an objective summary of the child’s visual engagement with others",
-    "TASK: Generate a psychological report summary of the child’s eye contact"
 ]
 
-
+single_intruction = "TASK: Based on the parent's statement, describe the child's eye contact patterns in a clinical tone"
 
 LoRA_args = [8, 64, 0.1]  # r, alpha, dropout
-training_args = [1e-4, 1, 0.1, 0.5, 4, 4]  # learning rate, no. epochs, label smoothing, max grad norm, train batch size, eval batch size
+training_args = [1e-4, 1, 0.1, 0.5, 4, 4, 0.1]  # learning rate, no. epochs, label smoothing, max grad norm, train batch size, eval batch size, warmup ratio, decay schedule
 data_args = [None, True]  # instruction, tags
 ####  run_model(1e-4, None, 10, [32, 64, 0.0], True)    # default =  learning rate, instruction, no. epochs, LoRA parameters (r, alpha, dropout), tags
 
-#run_model(training_args, LoRA_args, [None, True])
-#run_model(training_args, LoRA_args, [None, False])
+run_model([1e-3, 6, 0.1, 0, 4, 4, 0.05, "cosine"], LoRA_args, [single_intruction, True])
 
-batch_learn = True
+test_list = warmup_ratio_list
+batch_learn = False
 accum1 = 1
 if batch_learn:
-    for test_item in instruction_list:
-        print(f"LLM Test {accum1}/{len(instruction_list)}")
+    for test_item in test_list:
+        print(f"\nLLM Test {accum1}/{len(test_list)}\n")
         accum1 += 0.5
-        run_model([1e-3, 3, 0.1, 0.5, 4, 4], LoRA_args, [test_item, True])
+        run_model([1e-3, 6, 0.1, 0, 4, 4, test_item, "cosine"], LoRA_args, [single_intruction, True])
         accum1 += 0.5
-        run_model([1e-3, 5, 0.1, 0.5, 4, 4], LoRA_args, [test_item, True])
+        run_model([1e-3, 6, 0.1, 0, 4, 4, test_item, "linear"], LoRA_args, [single_intruction, True])
+

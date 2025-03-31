@@ -59,7 +59,7 @@ def add_tags(input_text):
 
 
 def add_instructions(input_text):
-    instruction = "TASK: Describe the child's responsiveness to visual social cues based on the parent's report"
+    instruction = "TASK: Based on the parent's statement, describe the child's eye contact patterns in a clinical tone"
     response = f"PARENT RESPONSE: {input_text}"
     full_input = f"{instruction}\n\n{response}"
     input_text = full_input
