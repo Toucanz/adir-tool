@@ -1,4 +1,5 @@
 import re
+from pathlib import Path
 from thefuzz import fuzz, process
 
 def parse_transcript(transcript_text, threshold=80):
@@ -52,7 +53,9 @@ def parse_transcript(transcript_text, threshold=80):
 
     return qa_pairs
 
-with open("preprocessing\example_transcript.txt", "r", encoding="utf-8") as f:
+# Use pathlib for cross-platform file handling
+file_path = Path("preprocessing") / "example_transcript.txt"
+with file_path.open("r", encoding="utf-8") as f:
     text = f.read()
 
 result = parse_transcript(text)
