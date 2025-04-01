@@ -70,11 +70,4 @@ with open("transcript.txt", "w") as file:
 
 print("Diarized output saved to 'transcript.txt'.")
 
-
-
-# Cleanup temporary files
-os.remove("converted_audio.wav") if AUDIO_FILE == "converted_audio.wav" else None
-os.remove("temp.wav") if os.path.exists("temp.wav") else None
-os.remove("temp_prev.wav") if os.path.exists("temp_prev.wav") else None
-
 print("Processing complete!")

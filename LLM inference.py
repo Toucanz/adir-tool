@@ -35,8 +35,8 @@ if modelLoad:
 ###########################################
 
 new_inputs = [
-    "At that age, he did look at me sometimes, but not often.",
-    "Oh yes, she made eye contact all the time."
+    "Well, I never really thought about it like that. I mean, he was always kind of in his own world, you know? Like, he’d be playing with his toys, and I’d try to talk to him, and sometimes he’d glance up, but not always. I don’t know if it was that he didn’t want to look or if he was just too focused on whatever he was doing. He was really into his trains back then, so if he was lining them up, forget it—nothing else existed. Actually, thinking about it, he did not really pay attention to what anyone else if he played with his toys. No, he always seemed to be in his own world at that age, not paying attention to what anyone else is saying",
+    "Oh yes, she made eye contact all the time. She would look atme for reassurance if she was adventorous, or if she did something cheeky. Other parents did comment on how sociable she was for a 5 year old"
 ]
 
 
