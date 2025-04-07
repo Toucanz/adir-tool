@@ -1,0 +1,73 @@
+question_num,item_num,input_text,output_text
+50,1,"At that age, he did look at me sometimes, but not often. If we were playing together, I could usually catch his eye for a second or two, but then he’d look away. When I walked into the room, he didn’t really watch me like other kids might. He seemed more focused on whatever he was doing. With others, it was about the same, he didn’t seek out eye contact much, even with family members.","[STEP 1]:
+“...At that age, he did look at me sometimes, but not often…”  ⇒ The child inconsistently looks at their caregiver.
+“...If we were playing together, I could usually catch his eye for a second or two, but then he’d look away...” ⇒ The caregiver notes that their child would glance at them, then look away.
+“...When I walked into the room, he didn’t really watch me like other kids might…” ⇒  The caretaker notes less eye contact from their child compared to other children.
+“...With others, it was about the same, he didn’t seek out eye contact much, even with family members…” ⇒ The caretaker notes similarly minimal eye contact from their child with everyone, including other family members.
+
+[STEP 2]:
+The child displays inconsistent eye contact with the caretaker, family members, and strangers.  The caretaker noted that their child would glance at them, then look away while playing together.  They also noted less eye contact compared to other children.  "
+50,2,"Oh yes, she made eye contact all the time. When we talked, she’d look at my face, and if I walked into the room, she’d turn to look at me. If we were playing a game, she’d check my expression a lot. She did that with other people too, not just me.","[STEP 1]
+“...Oh yes, she made eye contact all the time…” ⇒ Child has normal eye contact with the caretaker.
+“...When we talked, she’d look at my face, and if I walked into the room, she’d turn to look at me…” ⇒ Child has normal eye contact with their caretaker when socializing together.  
+“...If we were playing a game, she’d check my expression a lot…” ⇒ Child has normal eye contact behaviour when playing games with their caretaker.
+“...She did that with other people too, not just me…” ⇒ Child displays normal eye contact with other people.
+
+[STEP 2]
+The child demonstrated normal eye contact with the caretaker while socializing and playing games together.  Normal eye contact behaviour with other people as well.  "
+50,3,"Not really. It was hard to get his attention that way. I’d try to get him to look at me, but his eyes would kind of  dart around instead of meeting mine. If I walked into the room, he didn’t seem to notice unless I spoke. With other people, he mostly avoided eye contact.","[STEP 1] 
+“...It was hard to get his attention that way. I’d try to get him to look at me, but his eyes would kind of dart around instead of meeting mine…” ⇒ Child avoids eye contact with caretaker when caretaker is trying to get their attention.
+“...If I walked into the room, he didn’t seem to notice unless I spoke…” ⇒ When the caretaker enters the room with the child in it, they do not look at the caretaker unless they speak.
+“...With other people, he mostly avoided eye contact…” ⇒ Child avoids eye contact with other people.
+
+[STEP 2]
+The child displays minimal eye contact.  The caretaker mentions the child avoiding eye contact when trying to get their attention.  There is minimal eye contact with other people as well."
+50,4,"She did, but only when she wanted something. If she was asking for a snack or showing me a toy, she’d glance up at my face, but not for long. If I walked into the room, she wouldn’t usually look up unless I called her name. With others, she was even less likely to look at them directly.","[STEP 1]: 
+“...She did, but only when she wanted something. If she was asking for a snack or showing me a toy, she’d glance up at my face, but not for long…” ⇒ Child has inconsistent eye contact, using it to request or show things of interest to them.  
+“...If I walked into the room, she wouldn’t usually look up unless I called her name…” ⇒ When entering a room, the child did not look at their caretaker unless directly called to.
+“...With others, she was even less likely to look at them directly…” ⇒ Child had minimal direct eye contact with other people.
+
+[STEP 2]:
+The child had inconsistent eye contact with the caretaker, and minimal direct eye contact with other people.  The caretaker noted that the child would look at them when requesting or showing items of interest such as food, or toys.  The caretaker noted that when entering a room with the child in it, the child would not look at them unless directly called to. 
+"
+50,5,"He would look at me sometimes, but not as much as other kids. If we were playing together, he might glance at me, but he didn’t really watch my face for reactions. If I walked into the room, he didn’t usually acknowledge it unless I sat down next to him or spoke to him first. With other people, I think it was even less frequent.","[STEP 1]:
+“...He would look at me sometimes, but not as much as other kids…”  ⇒ The child would look at the caretaker sometimes, but less than other kids.
+“...If we were playing together, he might glance at me, but he didn’t really watch my face for reactions…” ⇒ While playing together, the child glances at their caretaker's face, but ignores facial reactions.
+“...If I walked into the room, he didn’t usually acknowledge it unless I sat down next to him or spoke to him first…” ⇒ When entering a room, the child does not look at the caretaker unless spoken to.
+“...With other people, I think it was even less frequent…” ⇒  The child has comparatively less eye contact with other people besides their caretaker.  
+
+[STEP 2]:
+The child demonstrates occasional eye contact with their caretaker, but less than other kids.  While playing together, the child may glance at the caretaker’s face, but ignores facial reactions.  When entering a room, the child does not look at the caretaker unless spoken to.  The child has comparatively less eye contact with other people besides their caretaker.  
+"
+50,6,"Yes, she always looked me in the eye when we talked. She was very engaged and seemed to study my face. If I walked into the room, she’d often turn and smile at me. She also did that with other people, teachers, relatives, even strangers sometimes.","[STEP 1]:
+“…Yes, she always looked me in the eye when we talked…” ⇒ The child would normally look into the eyes of their caretaker when talking together.
+“...If I walked into the room, she’d often turn and smile…” ⇒ When the caretaker entered the room, the child would turn towards them and smile.
+“...She also did that with other people, teachers, relatives, even strangers sometimes…” ⇒ The child would look at other people as well, teachers, relatives, and even strangers sometimes.
+
+[STEP 2]
+The child had normal eye contact when socializing with their caretaker.  The child would look at the caretaker and smile when they entered the room.  Additionally, the child’s caretaker would display normal eye contact with other people as well, teachers, relatives, and even strangers sometimes."
+50,7,"It was really hit or miss. Sometimes he’d look at me when I spoke to him, but a lot of the time, he’d just keep looking at what he was doing. If I walked into the room, I don’t think he noticed unless I spoke to him. He didn’t really watch other people’s faces much either.","[STEP 1]:
+“...It was really hit or miss. Sometimes he’d look at me when I spoke to him, but a lot of the time, he’d just keep looking at what he was doing…” ⇒ The child displays inconsistent eye contact with their caretaker, often preoccupied with their own task.
+“...If I walked into the room, I don’t think he noticed unless I spoke to him…” ⇒ When the caretaker enters the room with the child in it, the child would not look at them unless spoken to.
+“...He didn’t really watch other people’s faces much either…” ⇒ The child would avoid eye contact with other people too. 
+
+[STEP 2]:
+The child demonstrates inconsistent eye contact with their caretaker, often preoccupied with their own task. When the caretaker enters the room with the child in it, the child would not look at them unless spoken to. The child would avoid eye contact with other people too. 
+"
+50,8,"He had no problem with eye contact. If we were playing together or talking, he’d watch me closely, and if I walked into the room, he’d turn and acknowledge me. He did the same with other people, too. He was very socially aware.","[STEP 1]:
+“...He had no problem with eye contact…” ⇒ Child has normal eye contact.
+“...If we were playing together or talking, he’d watch me closely, and if I walked into the room, he’d turn and acknowledge me…” ⇒ The child would have normal eye contact with their caretaker when they were playing together or socializing. If they entered the room, the child would acknowledge them.
+“...He did the same with other people too…” ⇒ The child had normal eye contact with other people too.
+
+[STEP 2]:
+The child has normal eye contact behaviour. When playing or socializing with their caretaker, the child would watch them. If the caretaker entered the room, the child would acknowledge them. Also, the child had normal eye contact with other people.
+"
+50,9,"Now that I think about it, not really. If I tried to make eye contact, he’d usually look away quickly or just focus on what he was holding. When I walked into the room, he didn’t really acknowledge me unless I made a noise or said something. He seemed to avoid looking at people in general, even family.","[STEP 1]:
+“...Now that I think about it, not really…” ⇒ The child shows minimal eye contact.
+“...If I tried to make eye contact, he’d usually look away quickly or just focus on what he was holding…” ⇒ When the caretaker tries to make eye contact, the child usually looks away quickly or just focuses on what he is holding.
+“...When I walked into the room, he didn’t really acknowledge me unless I made a noise or said something….” ⇒ The child did not look at the caretaker if they entered the room, unless they made a noise or said something.
+“...He seemed to avoid looking at people in general, even family…” ⇒ The child avoids looking at people in general, even family.
+
+[STEP 2]:
+The child shows minimal eye contact. When the caretaker tries to make eye contact, the child usually looks away quickly or just focuses on what he is holding. When the caretaker enters the room, the child avoids looking at them unless the caretaker makes a noise or says something. The child avoids looking at people in general, even family.
+"

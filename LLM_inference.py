@@ -1,12 +1,13 @@
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from peft import PeftModel, PeftConfig
 import re
+from LLM_trainer import add_tags, add_instructions, CoT_instructions
 
 ############# Control Panel: ##############
 modelLoad = True
 runInference = True
 ###########################################
-
+LoRA_wrap = True
 
 ###########################################
 ################ Load Model ###############
@@ -15,16 +16,21 @@ runInference = True
 if modelLoad:
     # Paths to saved models
     base_model_name = "google/flan-t5-base"
-    lora_adapter_dir = "./flan-t5-lora-adapter"
+    if LoRA_wrap: model_path = "./flan-t5-lora-adapter-dialougeSum_CT1"
+    else: model_path = "./flan-t5-finetuned"
 
     # Load tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(lora_adapter_dir)
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
 
-    # Load base model
-    base_model = AutoModelForSeq2SeqLM.from_pretrained(base_model_name)
+    if LoRA_wrap:
+        # Load base model
+        base_model = AutoModelForSeq2SeqLM.from_pretrained(base_model_name)
 
-    # Load LoRA adapter weights into the base model
-    model = PeftModel.from_pretrained(base_model, lora_adapter_dir)
+        # Load LoRA adapter weights into the base model
+        model = PeftModel.from_pretrained(base_model, model_path)
+    else:
+        # Load the fine-tuned model directly
+        model = AutoModelForSeq2SeqLM.from_pretrained(model_path)
 
     # Put the model in evaluation mode
     model.eval()
@@ -36,36 +42,28 @@ if modelLoad:
 ###########################################
 
 new_inputs = [
-    "He usually avoided eye contact. I could call his name or try to talk to him, and he’d just look away or focus on a toy. I don’t remember him looking at me when I came into the room. He didn’t seem interested in people’s faces.",
-    "She was always looked at me when we were talking. If I walked into a room, she’d look right at me. During play, she’d check my face to see if I was smiling or paying attention. She also did that with other people, not just me.",
-    "At that age, he would sometimes look at me when I talked to him, but it didn’t last long. If I tried to get his attention, he'd glance up, but then go right back to what he was doing. With strangers or even family, he rarely made eye contact."
+    "He would always look at me.",
+    "She often avoided eye contact.",
+    "She didn't seem to ever look at me.",
+    "I don't think she looked at me when I entered the room.",
+    "He sometimes looked at me when I entered the room.",
+    "He would glance at me, then look away quickly.",
+    "I don't think she ever looks at me.",
+    "At that age, he did look at me sometimes, but not often. If we were playing together, I could usually catch his eye for a second or two, but then he’d look away. When I walked into the room, he didn’t really watch me like other kids might. He seemed more focused on whatever he was doing. With others, it was about the same, he didn’t seek out eye contact much, even with family members.",
+    "Oh yes, she made eye contact all the time. When we talked, she looked at my face, and if I walked into the room, she’d turn to look at me. If we were playing a game, she’d check my expression a lot. She did that with other people, too—not just me.",
+    "Not really. It was hard to get his attention that way. I’d try to get him to look at me, but his eyes would kind of dart around instead of meeting mine. If I walked into the room, he didn’t seem to notice unless I spoke. With other people, he mostly avoided eye contact.",
+    "We like to swim together and eat food. She would always look at me when I entered the room.",
+    "Good question, i'm not honestly sure! But I think he does look at strangers sometimes.",
+    "They don't often look at strangers. But I do need to leave soon, I have a meeting to attend.",
+    "When we go to the park, they always look, but don't look very long.",
+    "We love playing tennis together, and he makes great eye contact when we play. But when talking, he doesn't look at me much.",
+    "I don't think she looks at me when we eat as a family, but she does look at her siblings when they talk. I think she likes me.",
+    "Jim gives me strange looks, I can't tell if he really notices me or not. We would be talking, and his vision is on me, but he seems distant",
+    "I have no idea if she looks at me or not. I am a bad parent",
+    "When I take her to the store, she's always looking at the candy.  When I call her name, she comes to me, but she doesn't look at me.",
 ]
 
-
-
-def add_tags(input_text):
-    words_to_replace = ("she", "he", "his", "her", "she's", "he's", "he'd", "she'd", "she'll", "he'll")
-    input_text = input_text.replace("’", "'")   # Fix stupid apostrophes
-
-    ### Tokenizing the text while keeping punctuation
-    ### This regex will match words and punctuation
-    pattern = r"[^\s.,!?;:]+|[.,!?;:\s]"
-    input_tokens = re.findall(pattern, input_text)
-
-    #### Rebuild the input and output texts
-    input_text_out = ''.join([f"[CHILD]{word}[/CHILD]" if word.lower() in words_to_replace else word for word in input_tokens])
-
-    return input_text_out
-
-
-def add_instructions(input_text):
-    instruction = "TASK: Based on the parent's statement, describe the child's eye contact patterns in a clinical tone"
-    response = f"PARENT RESPONSE: {input_text}"
-    full_input = f"{instruction}\n\n{response}"
-    input_text = full_input
-    return input_text
-
-prepared_inputs = list(map(add_instructions, list(map(add_tags, new_inputs))))
+prepared_inputs = list(map(add_instructions, new_inputs))
 
 #print(prepared_inputs)
 
@@ -75,12 +73,16 @@ prepared_inputs = list(map(add_instructions, list(map(add_tags, new_inputs))))
 
 if runInference:
         # Tokenize and move to model's device
-    inputs = tokenizer(new_inputs, return_tensors="pt", padding=True, truncation=True).to(model.device)
+    inputs = tokenizer(
+        prepared_inputs, 
+        return_tensors="pt", 
+        padding=True, 
+        truncation=True).to(model.device)
 
     # Generate outputs
     outputs = model.generate(
         **inputs,
-        min_length=16,
+        min_length=4,
         max_length=256,
         num_beams=8,           # Beam search for better quality (optional)
         early_stopping=True

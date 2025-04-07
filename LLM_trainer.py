@@ -7,6 +7,7 @@ import numpy as np
 import nltk
 import evaluate
 from bert_score import score
+import os
 
 ############# Control Panel: ##############
 dataprep = True
@@ -22,8 +23,94 @@ add_to_file = True
 ############# Data Proccessing ############
 ###########################################
 
+# FLAN-T5 already has prior knowledge that "TASK:" introduces a directive and "QUESTION:" introduces context.    
+def add_tags(example):
+    words_to_replace = ("she", "he", "his", "her", "she's", "he's", "he'd", "she'd", "she'll", "he'll")
+    if type(example) != str: input_text = example['input_text']
+    else: input_text = example
+
+    input_text = input_text.replace("’", "'")   # Fix stupid apostrophes
+
+    ### Tokenizing the text while keeping punctuation
+    ### This regex will match words and punctuation
+    pattern = r"[^\s.,!?;:]+|[.,!?;:\s]"
+    input_tokens = re.findall(pattern, input_text)
+
+    #### Rebuild the input and output texts
+    input_text_out = ''.join([f"[CHILD]{word}[/CHILD]" if word.lower() in words_to_replace else word for word in input_tokens])
+
+    if type(example) != str: example['input_text'] = input_text_out
+    else: example = input_text_out
+
+    return example
+
+def add_instructions(example):
+    inst = "Topic: Eye contact"
+    instruction = inst.replace("’", "'")   # Fix stupid apostrophes, again
+    if type(example) != str: 
+        response = f"#Person1#: {example['input_text']}"
+        full_input = f"{instruction}\n{response}"
+        example['input_text'] = full_input
+    else:
+        response = f"RESPONSE: {example}"
+        full_input = f"{instruction}\n\n{response}"
+        example = full_input
+    return example
+
+def CoT_instructions(example):
+    inst1 = "[TASK]: The [TRANSCRIPT] is a caretaker describing their child's behavior. Summarize the [TRANSCRIPT] by following these steps, think through each step out loud: Step 1: Summarize each sentence one at a time. Step 2: If the summarized sentence is unrelated to eye contact or attention, remove it. Step 3: Concatenate the remaining sentence summaries together.\n\n"
+    inst2 = "[PROCEDURE]:\n"
+    inst3 = "STEP 1: Summarize each sentence, with a clinical and objective tone.\n"
+    inst4 = "STEP 2: Summarize the summaries from STEP 1. Start each summary with 'The caregiver reported'\n\n"
+    if type(example) != str:
+        inst5 = f'[TRANSCRIPT]: "{example['input_text']}"'
+        full_input = f'{inst1}{inst5}'
+        example['input_text'] = full_input
+    else:
+        inst5 = f'[TRANSCRIPT]: "{example}"'
+        full_input = f'{inst1}{inst5}'
+        example = full_input      
+    return example
+
+def set_CoT_data(CoT_instr, add_tag):
+    dataset_CoT = load_dataset('csv', data_files='all_data/qData_CoT.csv')['train']
+    for col in ["question_num", "item_num"]:
+        if col in dataset_CoT.column_names:
+            dataset_CoT = dataset_CoT.remove_columns(col)
+    if CoT_instr:
+        train_data = dataset_CoT.map(CoT_instructions, batched=False)  # No child tags yet...
+    if add_tag:
+        train_data = dataset_CoT.map(add_tags, batched=False)
+    return train_data, None
+
+def set_curriculum_order():
+    # Load datasets in curriculum order
+    dataset_easy = load_dataset('csv', data_files='all_data/qDataEasy.csv')['train']
+    dataset_medium = load_dataset('csv', data_files='all_data/qDataMedium.csv')['train']
+    dataset_hard_full = load_dataset('csv', data_files='all_data/qData.csv')['train']
+
+    # Split only the hard dataset for evaluation
+    dataset_hard = dataset_hard_full.train_test_split(test_size=0.2, seed=42)
+    train_hard = dataset_hard['train']
+    eval_data = dataset_hard['test']
+
+    # Combine all training data in order: easy → medium → hard
+    train_data = concatenate_datasets([dataset_easy, dataset_medium, train_hard])
+    
+    # Remove unnecessary columns if present
+    for col in ["question_num", "item_num"]:
+        if col in train_data.column_names:
+            train_data = train_data.remove_columns(col)
+        if col in eval_data.column_names:
+            eval_data = eval_data.remove_columns(col)
+
+    train_data = train_data.map(add_tags, batched=False).map(add_instructions, batched=False)   # Add tags and instructions to train data
+    eval_data = eval_data.map(add_instructions, batched=False)                                  # Add onlt intructions to validation data
+
+    return train_data, eval_data
+
 LLM_performance_headers = True  # ignore, for LLM_performance.csv
-def run_model(training_args, LoRA_params, data_args):
+def run_model(training_args, LoRA_params, train_data, eval_data, model_type, log_file=True, show_predictions=False, load_path=None, save_path="./flan-t5-lora-adapter"):
     ###########################################
     ########### Setting Model Params ##########
     ###########################################
@@ -36,82 +123,20 @@ def run_model(training_args, LoRA_params, data_args):
     eval_batch_size = training_args[5]
     warmup_ratio = training_args[6]
     decay_schedule = training_args[7]
+    weight_decay = training_args[8]
 
     # LoRA_params =  r, alpha, dropout
-    r = LoRA_params[0]
-    alpha = LoRA_params[1]
-    dropout = LoRA_params[2]
-
-    # data_args = instruction, tags
-    inst = data_args[0]
-    tags = data_args[1]
+    if LoRA_params is False: lora_wrap = False
+    else:
+        r = LoRA_params[0]
+        alpha = LoRA_params[1]
+        dropout = LoRA_params[2]
+        lora_wrap = True
     
-    addInstructions = True
-    if inst == None:
-        addInstructions = False
-    
-    ###########################################
-    ############### Prepare Data ##############
-    ###########################################
 
-    if dataprep:
-        # FLAN-T5 already has prior knowledge that "TASK:" introduces a directive and "QUESTION:" introduces context.    
-        def add_tags(example):
-            words_to_replace = ("she", "he", "his", "her", "she's", "he's", "he'd", "she'd", "she'll", "he'll")
-            input_text = example['input_text']
-            #output_text = example['output_text']
-
-            input_text = input_text.replace("’", "'")   # Fix stupid apostrophes
-
-            ### Tokenizing the text while keeping punctuation
-            ### This regex will match words and punctuation
-            pattern = r"[^\s.,!?;:]+|[.,!?;:\s]"
-            input_tokens = re.findall(pattern, input_text)
-            #output_tokens = re.findall(pattern, output_text)
-
-            #### Rebuild the input and output texts
-            input_text_out = ''.join([f"[CHILD]{word}[/CHILD]" if word.lower() in words_to_replace else word for word in input_tokens])
-            #output_text_out = ''.join([f"[NAME]{word}[/NAME]" if word.lower() in words_to_replace else word for word in output_tokens])
-
-            example['input_text'] = input_text_out
-            #example['output_text'] = output_text_out
-            return example
-        
-        def add_instructions(example):
-            instruction = inst.replace("’", "'")   # Fix stupid apostrophes, again
-            response = f"RESPONSE: {example['input_text']}"
-            full_input = f"{instruction}\n\n{response}"
-            example['input_text'] = full_input
-            return example
-
-
-        # Load datasets in curriculum order
-        dataset_easy = load_dataset('csv', data_files='all_data/qDataEasy.csv')['train']
-        dataset_medium = load_dataset('csv', data_files='all_data/qDataMedium.csv')['train']
-        dataset_hard_full = load_dataset('csv', data_files='all_data/qData.csv')['train']
-
-        # Split only the hard dataset for evaluation
-        dataset_hard = dataset_hard_full.train_test_split(test_size=0.2, seed=42)
-        train_hard = dataset_hard['train']
-        eval_data = dataset_hard['test']
-
-        # Combine all training data in order: easy → medium → hard
-        train_data = concatenate_datasets([dataset_easy, dataset_medium, train_hard])
-        
-        # Remove unnecessary columns if present
-        for col in ["question_num", "item_num"]:
-            if col in train_data.column_names:
-                train_data = train_data.remove_columns(col)
-            if col in eval_data.column_names:
-                eval_data = eval_data.remove_columns(col)
-
-        if tags:
-            train_data = train_data.map(add_tags, batched=False)
-        
-        if addInstructions:
-            train_data = train_data.map(add_instructions, batched=False)
-            eval_data = eval_data.map(add_instructions, batched=False)  # No tags added for validation data
-
+    train_data = train_data
+    if eval_data == None: eval_data = train_data
+    else: eval_data = eval_data
 
 
     ###########################################
@@ -119,24 +144,26 @@ def run_model(training_args, LoRA_params, data_args):
     ###########################################
 
     if loadModel:
-        model_name = "google/flan-t5-base"
+        model_name = model_type
 
-        # Loads the tokenizer for the speicifed model 
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        # Loads the tokenizer for the speicifSd model 
+        tokenizer = AutoTokenizer.from_pretrained(load_path if load_path else model_name)
 
         # Loads the pre-trained model
-        model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+        model = AutoModelForSeq2SeqLM.from_pretrained(load_path if load_path else model_name)
 
         ### Apply LoRA making training faster and lighter
-        lora_config = LoraConfig(
-            task_type=TaskType.SEQ_2_SEQ_LM,  # Sequence-to-sequence task
-            r=r,                             # Rank dimension (smaller = less compute)
-            lora_alpha=alpha,                    # Scaling factor
-            lora_dropout=dropout                 # Dropout rate (helps generalization)
-        )
+        if lora_wrap:
+            lora_config = LoraConfig(
+                task_type=TaskType.SEQ_2_SEQ_LM,  # Sequence-to-sequence task
+                r=r,                             # Rank dimension (smaller = less compute)
+                lora_alpha=alpha,                    # Scaling factor
+                lora_dropout=dropout,                 # Dropout rate (helps generalization)
+            )
+            # Wrap your model in LoRA
+            model = get_peft_model(model, lora_config)
 
-        # Wrap your model in LoRA
-        model = get_peft_model(model, lora_config)
+
         
 
 
@@ -149,17 +176,18 @@ def run_model(training_args, LoRA_params, data_args):
         # Tokenize inputs
         model_inputs = tokenizer(
             examples['input_text'],
-            max_length=max_input_token,
+            max_length=512,   #max_input_token,
             padding="max_length",   
             truncation=True
+            
         )
 
         # Tokenize labels (output)
         labels = tokenizer(
             examples['output_text'],
-            max_length=max_output_token,
+            max_length=256,  #max_output_token,
             padding="max_length",   
-            truncation=True
+            truncation=True,
         )
 
         # Replace padding token id's in labels by -100 so they are ignored in loss computation
@@ -176,9 +204,11 @@ def run_model(training_args, LoRA_params, data_args):
         max_output_token_train = max(len(tokenizer(example['output_text'])['input_ids']) for example in train_data)
         tokenized_train = train_data.map(lambda examples: preprocess_function(examples, max_input_token_train, max_output_token_train), batched=True)
 
-        max_input_token_eval = max(len(tokenizer(example['input_text'])['input_ids']) for example in eval_data)
-        max_output_token_eval = max(len(tokenizer(example['output_text'])['input_ids']) for example in eval_data)
-        tokenized_eval = eval_data.map(lambda examples: preprocess_function(examples, max_input_token_eval, max_output_token_eval), batched=True)
+        if eval_data is None: tokenized_eval = None
+        else:
+            max_input_token_eval = max(len(tokenizer(example['input_text'])['input_ids']) for example in eval_data)
+            max_output_token_eval = max(len(tokenizer(example['output_text'])['input_ids']) for example in eval_data)
+            tokenized_eval = eval_data.map(lambda examples: preprocess_function(examples, max_input_token_eval, max_output_token_eval), batched=True)
 
 
 
@@ -241,20 +271,21 @@ def run_model(training_args, LoRA_params, data_args):
             fp16=False,                                  # Use FP16 if GPU supports it (reduces memory). (causes eval_loss to be NaN on my computer)
             label_smoothing_factor=labels_smoothing,                # Regularization for better generalization
             max_grad_norm=max_grad_norm,                          # gradient clipping
-            weight_decay=0.01,                          # Regularization for better generalization
+            weight_decay=weight_decay,                          # Regularization for better generalization
             warmup_ratio=warmup_ratio,
-            lr_scheduler_type=decay_schedule
+            lr_scheduler_type=decay_schedule,
+            save_total_limit=1,                   # Limit the total amount of checkpoints. Deletes the older checkpoints.  Only keep the last 1 (best one)
         )
 
         ## Create Trainer, pass model, data, tokenizer
         trainer = Seq2SeqTrainer(
-            model=model,                              # The model to be finetuned (FLAN-T5 with LoRA)
-            args=training_args,                       # Training arguments previously defined
-            train_dataset=tokenized_train,            # Tokenized training data
-            eval_dataset=tokenized_eval,              # Tokenized validation data
-            tokenizer=tokenizer,                      # Tokenizer for the model
-            data_collator=data_collator,               # Data collator for batching and padding
-            compute_metrics=compute_metrics                      # Optional: metrics to evaluate model performance              
+            model=model,                                                                # The model to be finetuned (FLAN-T5 with LoRA)
+            args=training_args,                                                          # Training arguments previously defined
+            train_dataset=tokenized_train,                                                  # Tokenized training data
+            eval_dataset=tokenized_eval if tokenized_eval is not None else tokenized_train,            # Tokenized validation data
+            tokenizer=tokenizer,                                                        # Tokenizer for the model
+            data_collator=data_collator,                                                 # Data collator for batching and padding
+            compute_metrics=compute_metrics if tokenized_eval is not None else None       # Optional: metrics to evaluate model performance              
         )
 
 
@@ -265,9 +296,17 @@ def run_model(training_args, LoRA_params, data_args):
     if train:
         trainer.train()
 
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        
         # Save the model
-        model.save_pretrained("./flan-t5-lora-adapter")
-        tokenizer.save_pretrained("./flan-t5-lora-adapter")
+        if lora_wrap:
+            model.save_pretrained(save_path)
+            tokenizer.save_pretrained(save_path)
+        else: 
+            model.save_pretrained("./flan-t5-finetuned")
+            tokenizer.save_pretrained("./flan-t5-finetuned")
+
 
 
 
@@ -275,7 +314,7 @@ def run_model(training_args, LoRA_params, data_args):
     ########### Validate the Model ############
     ###########################################
 
-    if seeValidation:
+    if seeValidation and eval_data is not None:
         eval_results = trainer.evaluate()  # Optional: eval loss
 
         # Collect validation inputs (adjust as needed)
@@ -295,7 +334,7 @@ def run_model(training_args, LoRA_params, data_args):
         # Generate predictions
         generated_tokens = model.generate(
             **inputs,
-            min_length=24,
+            min_length=8,
             max_length=256,
             num_beams=8,        # changes "beam search" process, which is a decoding strategy.  Higher values = better quality generation (4 is medium)
             early_stopping=True # optional: stops generation when EOS is reached
@@ -310,70 +349,33 @@ def run_model(training_args, LoRA_params, data_args):
     ########### Log Performance to File #######
     ###########################################
 
-    if add_to_file:
+    if add_to_file and log_file and eval_data is not None:
         # Print input, predicted summary, and reference summary side by side
         global LLM_performance_headers
         prediction_str = ""
+
+        # Column headers for LLM_performance.csv
         if LLM_performance_headers:
             LLM_performance_headers = False
-            prediction_str = f"Model Name,eval_loss,ROUGE LSum,ROUGE (1 / 2 / L / Lsum),BERTscore precision,BERTScore Recall,BERTScore F1,tags,instruction,Learning Rate,Warmup Ratio,Decay Schedule,No. Epochs,LoRA parameters (r/alpha/dropout),"
+            prediction_str = f"Model Name,eval_loss,ROUGE LSum,ROUGE (1 / 2 / L / Lsum),BERTscore precision,BERTScore Recall,BERTScore F1,Learning Rate,Warmup Ratio,Decay Schedule,No. Epochs,LoRA parameters (r/alpha/dropout),"
             for idx in range(len(decoded_preds)):
                 prediction_str += f"Input {idx+1},Predicted Summary {idx+1},Reference Summary {idx+1},"
             prediction_str += "\n"
 
-        prediction_str += f'"{model_name}","{eval_results['eval_loss']}","{eval_results['eval_rougeLsum']}","{eval_results['eval_rouge1']} / {eval_results['eval_rouge2']} / {eval_results['eval_rougeL']} / {eval_results['eval_rougeLsum']}","{eval_results['eval_bertscore_precision']}","{eval_results['eval_bertscore_recall']}","{eval_results['eval_bertscore_f1']}","{tags}","{inst}","{lr}","{warmup_ratio}","{decay_schedule}","{no_epochs}","{r}/{alpha}/{dropout}",'
-        #print(f"Validation Loss: {eval_results}")
-        for idx in range(len(decoded_preds)):
-            
-            #print(f"Input {idx+1}: {eval_inputs[idx]}")
-            #print(f"Predicted Summary {idx+1}: {decoded_preds[idx]}")
-            #print(f"Reference Summary {idx+1}: {eval_data[idx]['output_text']}\n")
-            if inst != None: prediction_str += f'"{eval_inputs[idx].split("RESPONSE:")[1]}","{decoded_preds[idx]}","{eval_data[idx]['output_text']}",'.strip()
-            else: prediction_str += f'"{eval_inputs[idx]}","{decoded_preds[idx]}","{eval_data[idx]["output_text"]}",'.strip()
+        # Model parameters fitted into csv string
+
+        prediction_str += f'"{model_name}","{eval_results['eval_loss']}","{eval_results['eval_rougeLsum']}","{eval_results['eval_rouge1']} / {eval_results['eval_rouge2']} / {eval_results['eval_rougeL']} / {eval_results['eval_rougeLsum']}","{eval_results['eval_bertscore_precision']}","{eval_results['eval_bertscore_recall']}","{eval_results['eval_bertscore_f1']}","{lr}","{warmup_ratio}","{decay_schedule}","{no_epochs}","{r}/{alpha}/{dropout}",'
         
+        # 3 Decoded predictions fitted into csv string
+        for idx in range(len(decoded_preds)):
+            try: prediction_str += f'"{eval_inputs[idx].split("#Person1#:")[1]}","{decoded_preds[idx]}","{eval_data[idx]["output_text"]}",'.strip()
+            except: prediction_str += f'"{eval_inputs[idx]}","{decoded_preds[idx]}","{eval_data[idx]["output_text"]}",'.strip()
         with open("all_data/LLM_performance.csv", "a") as f:
             f.write(f"{prediction_str}\n")
 
-
-
-###########################################
-################# Parameters ##############
-###########################################    
-
-learning_rates_list =  [1e-5, 1e-4, 1e-3, 5e-3, 1e-2, 1e-1, 1]
-epoch_no_list = [5, 8, 15, 20, 30]
-warmup_ratio_list = [0, 0.025, 0.05, 0.075, 0.1]
-instruction_list = [
-    "TASK: Based on the parent's statement, describe the child's eye contact patterns in a clinical tone",
-    "TASK: Describe the child's responsiveness to visual social cues based on the parent's report",
-    "TASK: Transform the parent's informal account into a clinical summary of gaze behaviour",
-]
-
-intruction_list2 = [
-    "TASK: Write a clinician-style summary using the parent's description of the child's eye contact",
-    "TASK: Recast this parent narrative into a clinician's objective report on eye contact",
-    "TASK: Produce a diagnostic-style description of the child's eye contact based on the text",
-    "TASK: Provide a formal summary of the child's behavior related to eye contact",
-    "TASK: Based on the parent's account, summarize how the child used eye contact",
-]
-
-single_intruction = "TASK: Based on the parent's statement, describe the child's eye contact patterns in a clinical tone"
-
-LoRA_args = [8, 64, 0.1]  # r, alpha, dropout
-training_args = [1e-4, 1, 0.1, 0.5, 4, 4, 0.1]  # learning rate, no. epochs, label smoothing, max grad norm, train batch size, eval batch size, warmup ratio, decay schedule
-data_args = [None, True]  # instruction, tags
-####  run_model(1e-4, None, 10, [32, 64, 0.0], True)    # default =  learning rate, instruction, no. epochs, LoRA parameters (r, alpha, dropout), tags
-
-run_model([1e-3, 6, 0.1, 0, 4, 4, 0.05, "cosine"], LoRA_args, [single_intruction, True])
-
-test_list = warmup_ratio_list
-batch_learn = False
-accum1 = 1
-if batch_learn:
-    for test_item in test_list:
-        print(f"\nLLM Test {accum1}/{len(test_list)}\n")
-        accum1 += 0.5
-        run_model([1e-3, 6, 0.1, 0, 4, 4, test_item, "cosine"], LoRA_args, [single_intruction, True])
-        accum1 += 0.5
-        run_model([1e-3, 6, 0.1, 0, 4, 4, test_item, "linear"], LoRA_args, [single_intruction, True])
+    if show_predictions and eval_data is not None:
+        for idx in range(len(decoded_preds)):
+            print(f'Input {idx+1}: "{eval_inputs[idx].split("RESPONSE:")[1]}"\n')
+            print(f'Predicted Summary {idx+1}: "{decoded_preds[idx]}"\n')
+            print(f'Reference Summary {idx+1}: "{eval_data[idx]["output_text"]}"\n\n')
 
